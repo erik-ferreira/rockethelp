@@ -6,7 +6,7 @@ import {
   Roboto_700Bold,
 } from "@expo-google-fonts/roboto";
 
-import { Signin } from "./src/pages/Signin";
+import { Routes } from "./src/routes";
 import { Loading } from "./src/components/Loading";
 
 import { THEME } from "./src/styles/theme";
@@ -21,7 +21,8 @@ export default function App() {
         backgroundColor="transparent"
         translucent
       />
-      {!fonstLoaded ? <Loading /> : <Signin />}
+      {!fonstLoaded ? <Loading /> : <Routes />}
     </NativeBaseProvider>
   );
 }
+// 01:10:00
