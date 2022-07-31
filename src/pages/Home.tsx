@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   HStack,
   VStack,
@@ -11,12 +11,16 @@ import {
 } from "native-base";
 import { Alert } from "react-native";
 import auth from "@react-native-firebase/auth";
+import firestore from "@react-native-firebase/firestore";
 import { useNavigation } from "@react-navigation/native";
 import { SignOut, ChatTeardropText } from "phosphor-react-native";
 
 import { Filter } from "../components/Filter";
-import { Order, OrderProps } from "../components/Order";
 import { Button } from "../components/Button";
+import { Loading } from "../components/Loading";
+import { Order, OrderProps } from "../components/Order";
+
+import { dateFormat } from "../utils/firestoredDateFormat";
 
 import Logo from "../assets/logo_secondary.svg";
 
@@ -27,20 +31,8 @@ export function Home() {
   const [statusSelected, setStatusSelected] = useState<"open" | "closed">(
     "open"
   );
-  const [orders, setOrders] = useState<OrderProps[]>([
-    {
-      id: "1",
-      patrimony: "645121",
-      when: "18/07/2022 ás 10:00",
-      status: "open",
-    },
-    {
-      id: "2",
-      patrimony: "645121",
-      when: "19/07/2022 ás 10:00",
-      status: "closed",
-    },
-  ]);
+  const [isLoadingOrders, setIsLoadingOrders] = useState(true);
+  const [orders, setOrders] = useState<OrderProps[]>([]);
 
   function handleNavigationToPageNewOrder() {
     navigation.navigate("new");
@@ -58,6 +50,32 @@ export function Home() {
         return Alert.alert("Sair", "Não foi possível sair.");
       });
   }
+
+  useEffect(() => {
+    setIsLoadingOrders(true);
+
+    const subscriber = firestore()
+      .collection("orders")
+      .where("status", "==", statusSelected)
+      .onSnapshot((snapshot) => {
+        const data = snapshot.docs.map((doc) => {
+          const { patrimony, description, status, created_at } = doc.data();
+
+          return {
+            id: doc.id,
+            patrimony,
+            description,
+            status,
+            when: dateFormat(created_at),
+          };
+        });
+
+        setOrders(data);
+        setIsLoadingOrders(false);
+      });
+
+    return subscriber;
+  }, [statusSelected]);
 
   return (
     <VStack flex={1} pb={6} bg="gray.700">
@@ -105,27 +123,31 @@ export function Home() {
           />
         </HStack>
 
-        <FlatList
-          data={orders}
-          keyExtractor={(order) => order.id}
-          renderItem={({ item }) => (
-            <Order data={item} onPress={() => handleOpenDetails(item.id)} />
-          )}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{
-            paddingBottom: 60,
-          }}
-          ListEmptyComponent={() => (
-            <Center>
-              <ChatTeardropText color={colors.gray[300]} size={40} />
-              <Text color="gray.300" fontSize="xl" mt={6} textAlign="center">
-                Você ainda não possui {"\n"}
-                solicitações{" "}
-                {statusSelected === "open" ? "em andamento" : "finalizadas"}
-              </Text>
-            </Center>
-          )}
-        />
+        {isLoadingOrders ? (
+          <Loading />
+        ) : (
+          <FlatList
+            data={orders}
+            keyExtractor={(order) => order.id}
+            renderItem={({ item }) => (
+              <Order data={item} onPress={() => handleOpenDetails(item.id)} />
+            )}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{
+              paddingBottom: 60,
+            }}
+            ListEmptyComponent={() => (
+              <Center>
+                <ChatTeardropText color={colors.gray[300]} size={40} />
+                <Text color="gray.300" fontSize="xl" mt={6} textAlign="center">
+                  Você ainda não possui {"\n"}
+                  solicitações{" "}
+                  {statusSelected === "open" ? "em andamento" : "finalizadas"}
+                </Text>
+              </Center>
+            )}
+          />
+        )}
 
         <Button
           title="Nova solicitação"
